@@ -1,0 +1,12 @@
+{
+  "name": "focus-logbook-widget",
+  "version": "1.0.0",
+  "description": "Desktop Focus Logbook Widget",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

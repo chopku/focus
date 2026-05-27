@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ru" class="bg-transparent">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Фокусировка</title>
+  <!-- Tailwind CSS v4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+  <style>
+    /* Tahoma - The exact Windows XP system font */
+    body {
+      font-family: Tahoma, 'MS Sans Serif', Geneva, sans-serif;
+    }
+    
+    /* Electron Drag Utilities */
+    .drag-region {
+      -webkit-app-region: drag;
+    }
+    .no-drag {
+      -webkit-app-region: no-drag;
+    }
+
+    /* Windows XP styled scrollbar */
+    .cozy-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .cozy-scrollbar::-webkit-scrollbar-track {
+      background: #ECE9D8;
+    }
+    .cozy-scrollbar::-webkit-scrollbar-thumb {
+      background: #245DDA;
+      border: 1px solid #003C74;
+      border-radius: 2px;
+    }
+    .cozy-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #3D7BF5;
+    }
+
+    /* Classic 3D Windows XP Button Style */
+    .xp-btn {
+      background: linear-gradient(to bottom, #FFFFFF 0%, #F5F5EC 40%, #EAEAE0 100%);
+      border: 1px solid #003C74;
+      border-radius: 3px;
+      box-shadow: inset 1px 1px 0 #ffffff;
+      color: #003C74;
+      font-family: Tahoma, sans-serif;
+      font-weight: bold;
+      transition: all 0.1s ease;
+    }
+    .xp-btn:hover {
+      background: linear-gradient(to bottom, #FFFFFF 0%, #FAF0E6 40%, #EFE5D9 100%);
+      border-color: #003C74;
+    }
+    .xp-btn:active {
+      background: #EAEAE0;
+      box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.15);
+      transform: translateY(0.5px);
+    }
+
+    /* Custom Styling for Range Opacity Slider (Classic XP Blue Track) */
+    input[type="range"]::-webkit-slider-runnable-track {
+      background: #ffffff;
+      height: 4px;
+      border-radius: 2px;
+      border: 1px solid #7F9DB9;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      background: linear-gradient(to bottom, #FFFFFF 0%, #EAEAE0 100%);
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-top: -5px;
+      box-shadow: inset 1px 1px 0 #fff;
+      border: 1px solid #003C74;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: linear-gradient(to bottom, #FFFFFF 0%, #FAF0E6 100%);
+    }
+
+    /* Compact Focus Mode (Pomodoro Timer Running) CSS Overrides */
+    .compact-mode .hidden-in-compact {
+      display: none !important;
+    }
+    .compact-mode #widget-shell {
+      height: 144px !important; /* Fits perfectly in 150px height Electron window */
+      padding: 0 !important;
+    }
+    .compact-mode #active-task-container > div {
+      min-height: auto !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    .compact-mode #active-task-container p {
+      font-size: 11px !important;
+      line-height: 1.3 !important;
+    }
+    .compact-mode #active-task-container .mt-4 {
+      margin-top: 6px !important; /* tighten margins in compact mode */
+    }
+    .compact-mode header {
+      margin-bottom: 0px !important;
+    }
+
+    /* User Compact View Mode CSS Overrides */
+    .compact-view .hidden-in-compact-view {
+      display: none !important;
+    }
+    .compact-view #widget-shell {
+      height: 274px !important; /* Fits perfectly in 280px height Electron window */
+      padding: 0 !important;
+      justify-content: flex-start !important;
+    }
+    .compact-view #parallel-tasks-container {
+      max-height: 75px !important;
+    }
+    .compact-view #active-task-container > div {
+      min-height: auto !important;
+      padding-top: 2px !important;
+      padding-bottom: 2px !important;
+    }
+    .compact-view #active-task-container .mt-4 {
+      margin-top: 8px !important;
+    }
+  </style>
+</head>
+<body class="bg-transparent text-black h-screen w-screen flex items-center justify-center p-2 select-none overflow-hidden selection:bg-[#3D7BF5] selection:text-white">
+
+  <!-- Main XP Luna Shell - Draggable Region (Classic Sand-Beige Body) -->
+  <div id="widget-shell" class="drag-region w-full max-w-[294px] h-[434px] bg-[#ECE9D8] rounded-t-[8px] rounded-b-[4px] border-[3px] border-[#0054E3] flex flex-col justify-between relative overflow-hidden transition-all duration-300 shadow-none cursor-default p-0">
+
+    <div class="flex flex-col flex-grow">
+      
+      <!-- Upper Header Bar - Draggable Region (XP Royal Blue Title Bar) -->
+      <header class="drag-region bg-gradient-to-r from-[#0058E3] via-[#0A65EB] to-[#2787F7] h-[30px] flex items-center justify-between px-2 select-none shrink-0 relative cursor-move">
+        <!-- Title Highlight Line -->
+        <div class="absolute top-0 left-0 right-0 h-[1.5px] bg-[#6698FF] opacity-80 pointer-events-none"></div>
+        
+        <div class="hidden-in-compact">
+          <h1 class="text-white font-bold text-[11px] tracking-wide select-none drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">Фокусировка</h1>
+        </div>
+        
+        <!-- Native Desktop Window Controls (XP Classic Buttons) -->
+        <div class="flex items-center gap-1.5 no-drag">
+          <!-- Toggle Compact View Button (Green) -->
+          <button 
+            id="compact-toggle-btn"
+            onclick="toggleCompactView()" 
+            class="btn-scale w-[21px] h-[21px] rounded-[3px] bg-gradient-to-b from-[#54D554] to-[#269E26] border border-[#146614] hover:border-[#7CFC00] flex items-center justify-center text-[10px] text-white font-bold transition-all cursor-pointer hidden-in-compact animate-none" 
+            style="box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);"
+            title="Свернуть в компактный вид"
+          >
+            ⤡
+          </button>
+          
+          <!-- Minimize Button (Blue) -->
+          <button 
+            onclick="window.windowControls.minimize()" 
+            class="btn-scale w-[21px] h-[21px] rounded-[3px] bg-gradient-to-b from-[#4A8EF8] to-[#125CE3] border border-[#0A3D9A] hover:border-[#6699FF] flex items-center justify-center text-[10px] text-white font-bold transition-all cursor-pointer animate-none" 
+            style="box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);"
+            title="Свернуть"
+          >
+            —
+          </button>
+          
+          <!-- Close Button (Red) -->
+          <button 
+            onclick="window.windowControls.close()" 
+            class="btn-scale w-[21px] h-[21px] rounded-[3px] bg-gradient-to-b from-[#E76C55] to-[#C7381F] border border-[#8B2411] hover:border-[#FF9999] flex items-center justify-center text-[11px] text-white font-bold transition-all cursor-pointer animate-none" 
+            style="box-shadow: inset 1px 1px 0 rgba(255,255,255,0.5);"
+            title="Закрыть"
+          >
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <!-- Inner Content Area with standard XP sand padding -->
+      <div class="p-3.5 flex flex-col flex-grow">
+        
+        <!-- Active Focus Block (Current Focus) - Draggable Background -->
+        <section class="mb-2">
+          <div id="active-task-container" class="transition-all duration-300">
+            <!-- Rendered dynamically -->
+          </div>
+        </section>
+
+        <!-- Task Input Form -->
+        <section class="mb-3.5 no-drag hidden-in-compact hidden-in-compact-view">
+          <form id="task-form" onsubmit="handleFormSubmit(event)" class="relative flex items-center border border-[#7F9DB9] bg-white p-0.5 rounded-[2px] transition-colors">
+            <input 
+              type="text" 
+              id="task-input" 
+              placeholder="Каков следующий фокус?..." 
+              maxlength="120"
+              required
+              class="w-full bg-transparent text-black text-center text-xs focus:outline-none transition-all placeholder-[#919B9C] shadow-none border-none py-1 font-semibold"
+            >
+          </form>
+        </section>
+
+        <!-- Parallel Tasks Block -->
+        <section class="mb-1 flex-grow flex flex-col justify-end hidden-in-compact">
+          <div class="flex items-center justify-between mb-2 select-none border-b border-[#D2D2C9] pb-1">
+            <h2 class="text-[10px] font-bold text-[#003C74] tracking-wide uppercase">Очередь</h2>
+            <span id="parallel-count" class="text-[9px] font-bold text-[#003C74] bg-white border border-[#7F9DB9] px-1.5 py-0.2 rounded-[2px] select-none">0</span>
+          </div>
+          <div id="parallel-tasks-container" class="no-drag max-h-[90px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-1 transition-all duration-200">
+            <!-- Rendered dynamically -->
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- History & Settings Block (Collapsible XP Explorer Sidebar Panel style!) -->
+    <footer class="no-drag shrink-0 hidden-in-compact hidden-in-compact-view">
+      <details class="group border-t border-[#003C74]" id="history-details">
+        <summary class="flex items-center justify-center gap-1 cursor-pointer list-none select-none bg-[#245DDA] hover:bg-[#3D7BF5] text-white py-1.5 transition-colors">
+          <span class="text-[10px] font-bold uppercase tracking-wider">Опции & Архив</span>
+          <span id="history-count" class="text-[8px] font-bold px-1 rounded-full bg-white text-[#245DDA] select-none">0</span>
+        </summary>
+        
+        <!-- Light blue XP Explorer-style sidebar body -->
+        <div class="bg-[#D6E3F7] p-3 border-t border-[#003C74] space-y-2.5">
+          <!-- Opacity Settings Control -->
+          <div class="flex items-center justify-between px-0.5 select-none">
+            <span class="text-[10px] font-bold text-[#003C74] uppercase tracking-wider">Прозрачность</span>
+            <div class="flex items-center gap-2">
+              <input 
+                type="range" 
+                id="opacity-slider" 
+                min="35" 
+                max="100" 
+                value="85" 
+                oninput="adjustOpacity(this.value)"
+                class="w-16 h-3 bg-transparent appearance-none cursor-pointer no-drag animate-none"
+              >
+              <span id="opacity-value" class="w-6 text-right text-[9px] font-bold text-[#003C74]">85%</span>
+            </div>
+          </div>
+          
+          <!-- Pomodoro Timer Settings Control -->
+          <div class="flex items-center justify-between px-0.5 select-none">
+            <span class="text-[10px] font-bold text-[#003C74] uppercase tracking-wider">Таймер Pomodoro (мин)</span>
+            <input 
+              type="number" 
+              id="timer-duration-input" 
+              min="1" 
+              max="120" 
+              value="25" 
+              onchange="updateTimerDuration(this.value)"
+              class="w-8 text-right text-[10px] font-bold text-[#003C74] bg-white border border-[#7F9DB9] rounded-[2px] focus:outline-none no-drag font-mono"
+            >
+          </div>
+          
+          <div class="border-t border-[#7F9DB9]/60 my-1.5"></div>
+
+          <!-- Completed History List -->
+          <div id="history-list" class="max-h-[55px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-0.5 transition-all duration-300">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </details>
+    </footer>
+
+  </div>
+
+  <!-- Reactive Logic Script -->
+  <script>
+    // State definition
+    const state = {
+      activeTask: null,
+      parallelTasks: [],
+      history: []
+    };
+
+    // Pomodoro Timer State
+    const pomodoro = {
+      durationMinutes: 25,
+      timeLeft: 1500,
+      isRunning: false,
+      intervalId: null,
+      endTime: 0
+    };
+
+    // Compact View Mode ViewState
+    const viewState = {
+      isCompactView: false
+    };
+
+    // Load state from localStorage on init
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('focus_logbook_state');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state.activeTask = parsed.activeTask || null;
+          state.parallelTasks = parsed.parallelTasks || [];
+          state.history = parsed.history || [];
+        }
+      } catch (e) {
+        console.error('Failed to load state from localStorage', e);
+      }
+    }
+
+    // Save state to localStorage
+    function saveState() {
+      try {
+        localStorage.setItem('focus_logbook_state', JSON.stringify(state));
+      } catch (e) {
+        console.error('Failed to save state to localStorage', e);
+      }
+    }
+
+    // Helper: secure escape for HTML strings
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Helper: format timestamp for display
+    function formatTime(isoString) {
+      if (!isoString) return '';
+      const d = new Date(isoString);
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
+    // Dynamic Opacity Controller
+    window.adjustOpacity = function(val) {
+      const shell = document.getElementById('widget-shell');
+      if (shell) {
+        shell.style.opacity = val / 100;
+      }
+      const valEl = document.getElementById('opacity-value');
+      if (valEl) {
+        valEl.textContent = val + '%';
+      }
+      try {
+        localStorage.setItem('focus_logbook_opacity', val);
+      } catch (e) {
+        console.error('Failed to save opacity to localStorage', e);
+      }
+    };
+
+    // --- Compact View Controller ---
+    
+    function loadViewState() {
+      try {
+        const saved = localStorage.getItem('focus_logbook_compact_view');
+        if (saved) {
+          viewState.isCompactView = (saved === 'true');
+        }
+      } catch (e) {
+        console.error('Failed to load view settings', e);
+      }
+    }
+
+    window.toggleCompactView = function() {
+      // Prevent toggling views when Pomodoro is running
+      if (pomodoro.isRunning) return;
+
+      viewState.isCompactView = !viewState.isCompactView;
+      try {
+        localStorage.setItem('focus_logbook_compact_view', viewState.isCompactView);
+      } catch (e) {
+        console.error('Failed to save view settings', e);
+      }
+      applyCompactView();
+    };
+
+    window.applyCompactView = function() {
+      const toggleBtn = document.getElementById('compact-toggle-btn');
+      if (viewState.isCompactView) {
+        document.body.classList.add('compact-view');
+        if (toggleBtn) {
+          toggleBtn.innerHTML = '⤢';
+          toggleBtn.title = "Развернуть форму";
+        }
+        if (window.windowControls && window.windowControls.setCompactView) {
+          window.windowControls.setCompactView();
+        }
+      } else {
+        document.body.classList.remove('compact-view');
+        if (toggleBtn) {
+          toggleBtn.innerHTML = '⤡';
+          toggleBtn.title = "Свернуть в компактный вид";
+        }
+        if (window.windowControls && window.windowControls.setNormal) {
+          window.windowControls.setNormal();
+        }
+      }
+    };
+
+    // --- Pomodoro Timer Functions ---
+    
+    function loadPomodoroSettings() {
+      try {
+        const savedDuration = localStorage.getItem('focus_logbook_pomodoro_duration');
+        if (savedDuration) {
+          pomodoro.durationMinutes = parseInt(savedDuration, 10);
+        }
+      } catch (e) {
+        console.error('Failed to load pomodoro settings', e);
+      }
+      pomodoro.timeLeft = pomodoro.durationMinutes * 60;
+    }
+
+    window.updateTimerDuration = function(val) {
+      const minutes = parseInt(val, 10);
+      if (isNaN(minutes) || minutes < 1) return;
+
+      pomodoro.durationMinutes = minutes;
+      try {
+        localStorage.setItem('focus_logbook_pomodoro_duration', minutes);
+      } catch (e) {
+        console.error('Failed to save pomodoro settings', e);
+      }
+
+      if (!pomodoro.isRunning) {
+        pomodoro.timeLeft = minutes * 60;
+        updateTimerUI();
+      }
+    };
+
+    window.toggleTimer = function() {
+      if (pomodoro.isRunning) {
+        // Pause Timer
+        pomodoro.isRunning = false;
+        clearInterval(pomodoro.intervalId);
+        
+        // Return window to normal compact view or normal size
+        document.body.classList.remove('compact-mode');
+        applyCompactView();
+      } else {
+        // Start Timer
+        pomodoro.isRunning = true;
+        // Calculate the exact absolute end timestamp
+        pomodoro.endTime = Date.now() + pomodoro.timeLeft * 1000;
+        
+        // Shrink window to compact size
+        document.body.classList.add('compact-mode');
+        if (window.windowControls && window.windowControls.setCompact) {
+          window.windowControls.setCompact();
+        }
+
+        pomodoro.intervalId = setInterval(() => {
+          // Calculate the correct remaining seconds dynamically
+          const remainingSeconds = Math.max(0, Math.ceil((pomodoro.endTime - Date.now()) / 1000));
+          pomodoro.timeLeft = remainingSeconds;
+          
+          if (pomodoro.timeLeft <= 0) {
+            clearInterval(pomodoro.intervalId);
+            pomodoro.isRunning = false;
+            pomodoro.timeLeft = pomodoro.durationMinutes * 60;
+            triggerAlert();
+
+            // Return window to compact view or normal size when timer completes
+            document.body.classList.remove('compact-mode');
+            applyCompactView();
+          }
+          updateTimerUI();
+        }, 200); // Poll frequently for smooth updates and precision
+      }
+      updateTimerUI();
+    };
+
+    window.resetTimer = function() {
+      pomodoro.isRunning = false;
+      clearInterval(pomodoro.intervalId);
+      pomodoro.timeLeft = pomodoro.durationMinutes * 60;
+
+      // Return window to compact view or normal size
+      document.body.classList.remove('compact-mode');
+      applyCompactView();
+
+      updateTimerUI();
+    };
+
+    function updateTimerUI() {
+      const mins = Math.floor(pomodoro.timeLeft / 60);
+      const secs = pomodoro.timeLeft % 60;
+      const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Update timer texts
+      document.querySelectorAll('.timer-display').forEach(el => {
+        el.textContent = timeStr;
+      });
+
+      // Update play/pause button labels
+      document.querySelectorAll('.timer-play-btn').forEach(el => {
+        el.textContent = pomodoro.isRunning ? '⏸' : '▶';
+      });
+    }
+
+    function triggerAlert() {
+      // 1. Cozy green visual flash on the widget card (XP-Style Deep Blue Flash)
+      const shell = document.getElementById('widget-shell');
+      if (shell) {
+        shell.style.borderColor = '#C93C22'; // Flash deep red
+        setTimeout(() => {
+          shell.style.borderColor = '#0054E3'; // Back to royal blue
+        }, 1500);
+      }
+      
+      // 2. Play subtle visual notification
+      if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'granted') {
+          new Notification('Фокусировка', { body: 'Таймер Pomodoro завершен! Сделайте небольшой перерыв.' });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('Фокусировка', { body: 'Таймер Pomodoro завершен! Сделайте небольшой перерыв.' });
+            }
+          });
+        }
+      }
+    }
+
+    // --- Business Logic Tasks Actions ---
+
+    window.addTask = function(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const newTask = {
+        id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        text: trimmed,
+        createdAt: new Date().toISOString()
+      };
+
+      if (state.activeTask) {
+        // Move current active task to the front of parallel tasks list
+        state.parallelTasks.unshift(state.activeTask);
+      }
+      state.activeTask = newTask;
+      
+      saveState();
+      render();
+    };
+
+    // Business logic action: Switch / swap active task
+    window.switchTask = function(id) {
+      const index = state.parallelTasks.findIndex(t => t.id === id);
+      if (index === -1) return;
+
+      const selectedTask = state.parallelTasks[index];
+      const prevActive = state.activeTask;
+
+      if (prevActive) {
+        // Swap task at the index with previous active
+        state.parallelTasks[index] = prevActive;
+      } else {
+        // If there was no active task, just remove selected from parallel
+        state.parallelTasks.splice(index, 1);
+      }
+      state.activeTask = selectedTask;
+
+      saveState();
+      render();
+    };
+
+    // Business logic action: Complete task
+    window.completeTask = function(id) {
+      let completedTask = null;
+
+      if (state.activeTask && state.activeTask.id === id) {
+        completedTask = state.activeTask;
+        state.activeTask = null;
+      } else {
+        const index = state.parallelTasks.findIndex(t => t.id === id);
+        if (index !== -1) {
+          completedTask = state.parallelTasks[index];
+          state.parallelTasks.splice(index, 1);
+        }
+      }
+
+      if (completedTask) {
+        const historyItem = {
+          ...completedTask,
+          completedAt: new Date().toISOString()
+        };
+        
+        state.history.unshift(historyItem);
+        // Limit history to 10 items
+        if (state.history.length > 10) {
+          state.history = state.history.slice(0, 10);
+        }
+
+        // If active task is completed while timer is running, stop and restore window
+        if (state.activeTask === null) {
+          pomodoro.isRunning = false;
+          clearInterval(pomodoro.intervalId);
+          pomodoro.timeLeft = pomodoro.durationMinutes * 60;
+          document.body.classList.remove('compact-mode');
+          applyCompactView();
+        }
+
+        saveState();
+        render();
+      }
+    };
+
+    // Handles form submission safely
+    window.handleFormSubmit = function(e) {
+      e.preventDefault();
+      const input = document.getElementById('task-input');
+      const text = input.value;
+      if (text.trim()) {
+        addTask(text);
+        input.value = '';
+        input.blur(); // Unfocus after submitting for better minimalist vibe
+      }
+    };
+
+    // Rendering Engine
+    function render() {
+      // 1. Render Active Task Area
+      const activeContainer = document.getElementById('active-task-container');
+      if (state.activeTask) {
+        activeContainer.innerHTML = `
+          <!-- Windows XP Group Box with thin etched borders -->
+          <div class="border border-[#7F9DB9] bg-white rounded-[3px] p-3 text-center transition-all duration-300 cursor-move" style="box-shadow: inset 1px 1px 0 #ffffff;">
+            <span class="text-[9px] font-bold text-[#003C74] tracking-wide uppercase block mb-1 select-none">Текущий фокус:</span>
+            <p class="text-black text-xs font-semibold leading-relaxed break-words max-w-[240px] select-text">
+              ${escapeHTML(state.activeTask.text)}
+            </p>
+            
+            <div class="flex items-center justify-between w-full mt-3 px-0.5 select-none no-drag">
+              <!-- XP-Style 3D Gray Button -->
+              <button 
+                onclick="completeTask('${state.activeTask.id}')"
+                class="btn-scale xp-btn text-[9px] px-3.5 py-1 transition-all cursor-pointer no-drag animate-none"
+              >
+                Готово
+              </button>
+              
+              <!-- Pomodoro Timer Pill (XP Console Style) -->
+              <div class="flex items-center gap-1.5 text-[10px] bg-black border border-[#7F9DB9]/60 rounded-[3px] px-2 py-0.5 shadow-inner no-drag">
+                <button onclick="toggleTimer()" class="timer-play-btn text-[#00FF00] hover:text-[#76ff9a] transition-colors cursor-pointer text-[7px] animate-none font-bold" title="Старт/Пауза">▶</button>
+                <span class="timer-display font-mono text-[#00FF00] font-bold select-all tracking-wider">25:00</span>
+                <button onclick="resetTimer()" class="hover:text-white transition-colors cursor-pointer text-[9px] text-[#A62F1B] animate-none" title="Сбросить">↺</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        // Coziest Minimal Empty State (XP Style)
+        activeContainer.innerHTML = `
+          <div class="border border-dashed border-[#7F9DB9] bg-white/40 rounded-[3px] p-4 text-center transition-all duration-300 cursor-move">
+            <p class="text-stone-500 text-xs italic select-none">Внимание свободно</p>
+            
+            <!-- Pomodoro Timer Pill in Empty State -->
+            <div class="inline-flex items-center gap-1.5 text-[10px] bg-black border border-[#7F9DB9]/60 rounded-[3px] px-2.5 py-0.5 shadow-inner mt-2.5 select-none no-drag">
+              <button onclick="toggleTimer()" class="timer-play-btn text-[#00FF00] hover:text-[#76ff9a] transition-colors cursor-pointer text-[7px] animate-none font-bold" title="Старт/Пауза">▶</button>
+              <span class="timer-display font-mono text-[#00FF00] font-bold tracking-wider">25:00</span>
+              <button onclick="resetTimer()" class="hover:text-white transition-colors cursor-pointer text-[9px] text-[#A62F1B] animate-none" title="Сбросить">↺</button>
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. Render Parallel Tasks List
+      const parallelContainer = document.getElementById('parallel-tasks-container');
+      const parallelCount = document.getElementById('parallel-count');
+      parallelCount.textContent = state.parallelTasks.length;
+
+      if (state.parallelTasks.length === 0) {
+        parallelContainer.innerHTML = `
+          <div class="py-3 text-center select-none bg-white/60 border border-[#D2D2C9]/60 rounded-[2px]">
+            <p class="text-[10px] text-stone-500 font-semibold italic">Очередь пуста</p>
+          </div>
+        `;
+      } else {
+        parallelContainer.innerHTML = state.parallelTasks.map(t => `
+          <div class="group flex items-center justify-between py-1 px-1.5 hover:bg-[#3D7BF5]/15 border-b border-[#D2D2C9]/30 transition-colors duration-100">
+            <button 
+              onclick="switchTask('${t.id}')"
+              class="flex-1 text-left text-xs font-semibold text-stone-800 hover:text-[#003C74] truncate pr-2 cursor-pointer transition-colors duration-100 animate-none"
+              title="Переключить фокус"
+            >
+              <span class="text-[#0054E3] mr-1 select-none font-bold">•</span> ${escapeHTML(t.text)}
+            </button>
+            <button 
+              onclick="completeTask('${t.id}')"
+              class="opacity-0 group-hover:opacity-100 text-[#0054E3] hover:text-green-600 transition-opacity duration-100 cursor-pointer text-[10px] px-0.5 font-bold animate-none"
+              title="Завершить сразу"
+            >
+              ✓
+            </button>
+          </div>
+        `).join('');
+      }
+
+      // 3. Render History / Archive List
+      const historyList = document.getElementById('history-list');
+      const historyCount = document.getElementById('history-count');
+      historyCount.textContent = state.history.length;
+
+      if (state.history.length === 0) {
+        historyList.innerHTML = `
+          <p class="text-[9px] text-[#003C74] italic text-center py-2 select-none">Архив пока пуст</p>
+        `;
+      } else {
+        historyList.innerHTML = state.history.map(t => `
+          <div class="flex items-center justify-between py-0.5 px-0.5 text-[10px] text-[#003C74] select-text">
+            <span class="line-through truncate max-w-[210px] text-stone-500">• ${escapeHTML(t.text)}</span>
+            <span class="text-[8px] text-stone-500 select-none shrink-0 font-medium">${formatTime(t.completedAt)}</span>
+          </div>
+        `).join('');
+      }
+
+      // Update timer elements display instantly
+      updateTimerUI();
+    }
+
+    // App Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      loadViewState();
+      loadPomodoroSettings();
+      render();
+      
+      // Apply saved Compact View state on start
+      applyCompactView();
+
+      // Load and apply saved opacity
+      const savedOpacity = localStorage.getItem('focus_logbook_opacity') || '100';
+      const slider = document.getElementById('opacity-slider');
+      if (slider) {
+        slider.value = savedOpacity;
+      }
+      adjustOpacity(savedOpacity);
+
+      // Apply initial Pomodoro duration configuration inside Settings UI
+      const durationInput = document.getElementById('timer-duration-input');
+      if (durationInput) {
+        durationInput.value = pomodoro.durationMinutes;
+      }
+    });
+  </script>
+</body>
+</html>
