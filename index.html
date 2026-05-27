@@ -84,21 +84,15 @@
     .compact-mode .hidden-in-compact {
       display: none !important;
     }
-    .compact-mode #widget-shell {
-      height: 144px !important; /* Fits perfectly in 150px height Electron window */
-      padding: 0 !important;
-    }
     .compact-mode #active-task-container > div {
       min-height: auto !important;
-      padding-top: 0 !important;
-      padding-bottom: 0 !important;
     }
     .compact-mode #active-task-container p {
       font-size: 11px !important;
       line-height: 1.3 !important;
     }
-    .compact-mode #active-task-container .mt-4 {
-      margin-top: 6px !important; /* tighten margins in compact mode */
+    .compact-mode #active-task-container .mt-3 {
+      margin-top: 8px !important; /* tighten margins in compact mode */
     }
     .compact-mode header {
       margin-bottom: 0px !important;
@@ -109,8 +103,6 @@
       display: none !important;
     }
     .compact-view #widget-shell {
-      height: 274px !important; /* Fits perfectly in 280px height Electron window */
-      padding: 0 !important;
       justify-content: flex-start !important;
     }
     .compact-view #parallel-tasks-container {
@@ -118,8 +110,6 @@
     }
     .compact-view #active-task-container > div {
       min-height: auto !important;
-      padding-top: 2px !important;
-      padding-bottom: 2px !important;
     }
     .compact-view #active-task-container .mt-4 {
       margin-top: 8px !important;
@@ -129,7 +119,7 @@
 <body class="bg-transparent text-black h-screen w-screen flex items-center justify-center p-2 select-none overflow-hidden selection:bg-[#3D7BF5] selection:text-white">
 
   <!-- Main XP Luna Shell - Draggable Region (Classic Sand-Beige Body) -->
-  <div id="widget-shell" class="drag-region w-full max-w-[294px] h-[434px] bg-[#ECE9D8] rounded-t-[8px] rounded-b-[4px] border-[3px] border-[#0054E3] flex flex-col justify-between relative overflow-hidden transition-all duration-300 shadow-none cursor-default p-0">
+  <div id="widget-shell" class="drag-region w-[294px] h-full bg-[#ECE9D8] rounded-t-[8px] rounded-b-[4px] border-[3px] border-[#0054E3] flex flex-col justify-between relative overflow-hidden shadow-none cursor-default p-0">
 
     <div class="flex flex-col flex-grow">
       
@@ -138,12 +128,12 @@
         <!-- Title Highlight Line -->
         <div class="absolute top-0 left-0 right-0 h-[1.5px] bg-[#6698FF] opacity-80 pointer-events-none"></div>
         
-        <div class="hidden-in-compact">
+        <div>
           <h1 class="text-white font-bold text-[11px] tracking-wide select-none drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">Фокусировка</h1>
         </div>
         
         <!-- Native Desktop Window Controls (XP Classic Buttons) -->
-        <div class="flex items-center gap-1.5 no-drag">
+        <div class="flex items-center gap-1.5 no-drag ml-auto">
           <!-- Toggle Compact View Button (Green) -->
           <button 
             id="compact-toggle-btn"
@@ -153,6 +143,17 @@
             title="Свернуть в компактный вид"
           >
             ⤡
+          </button>
+          
+          <!-- Timer Expand/Collapse Button (Green) - Visible only when timer is running -->
+          <button 
+            id="timer-expand-btn"
+            onclick="toggleTimerExpansion()" 
+            class="btn-scale w-[21px] h-[21px] rounded-[3px] bg-gradient-to-b from-[#54D554] to-[#269E26] border border-[#146614] hover:border-[#7CFC00] flex items-center justify-center text-[10px] text-white font-bold cursor-pointer hidden animate-none" 
+            style="box-shadow: inset 1px 1px 0 rgba(255,255,255,0.4);"
+            title="Развернуть интерфейс"
+          >
+            ⤢
           </button>
           
           <!-- Minimize Button (Blue) -->
@@ -182,7 +183,7 @@
         
         <!-- Active Focus Block (Current Focus) - Draggable Background -->
         <section class="mb-2">
-          <div id="active-task-container" class="transition-all duration-300">
+          <div id="active-task-container" class="">
             <!-- Rendered dynamically -->
           </div>
         </section>
@@ -207,7 +208,7 @@
             <h2 class="text-[10px] font-bold text-[#003C74] tracking-wide uppercase">Очередь</h2>
             <span id="parallel-count" class="text-[9px] font-bold text-[#003C74] bg-white border border-[#7F9DB9] px-1.5 py-0.2 rounded-[2px] select-none">0</span>
           </div>
-          <div id="parallel-tasks-container" class="no-drag max-h-[90px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-1 transition-all duration-200">
+          <div id="parallel-tasks-container" class="no-drag max-h-[90px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-1">
             <!-- Rendered dynamically -->
           </div>
         </section>
@@ -260,12 +261,78 @@
           <div class="border-t border-[#7F9DB9]/60 my-1.5"></div>
 
           <!-- Completed History List -->
-          <div id="history-list" class="max-h-[55px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-0.5 transition-all duration-300">
+          <div id="history-list" class="max-h-[55px] overflow-y-auto cozy-scrollbar pr-0.5 space-y-0.5">
             <!-- Rendered dynamically -->
           </div>
         </div>
       </details>
     </footer>
+
+    <!-- Notepad Modal Overlay (Hidden by default) -->
+    <div id="notes-modal" class="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-3 hidden no-drag">
+      <!-- XP Window (Dialog Box Style) -->
+      <div class="w-full max-w-[260px] bg-[#ECE9D8] rounded-t-[5px] rounded-b-[3px] border-2 border-[#0054E3] flex flex-col shadow-lg">
+        <!-- Modal Header (Blue Title Bar) -->
+        <div class="bg-gradient-to-r from-[#0058E3] via-[#0A65EB] to-[#2787F7] h-[24px] flex items-center justify-between px-2 select-none shrink-0 relative">
+          <div class="absolute top-0 left-0 right-0 h-[1.5px] bg-[#6698FF] opacity-80 pointer-events-none"></div>
+          <span class="text-white font-bold text-[10px] tracking-wide drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">Блокнот XP</span>
+          <!-- Mini Close Button -->
+          <button onclick="closeNotesModal(false)" class="w-[15px] h-[15px] rounded-[2px] bg-gradient-to-b from-[#E76C55] to-[#C7381F] border border-[#8B2411] flex items-center justify-center text-[9px] text-white font-bold cursor-pointer hover:border-[#FF9999]">✕</button>
+        </div>
+        <!-- Modal Body -->
+        <div class="p-2.5 flex flex-col gap-2">
+          <div class="text-[10px] font-bold text-[#003C74] truncate font-sans" id="notes-modal-task-title">Задача: ...</div>
+          
+          <!-- Text Area (Sunken 3D border, standard Notepad styling) -->
+          <textarea 
+            id="notes-textarea" 
+            rows="5" 
+            placeholder="Введите заметки к задаче здесь..."
+            class="w-full text-xs p-1.5 focus:outline-none resize-none font-mono text-black bg-white cozy-scrollbar rounded-[2px] no-drag select-text overflow-y-auto"
+            style="border: 2px solid #7F9DB9; box-shadow: inset 1.5px 1.5px 2px rgba(0,0,0,0.15);"
+          ></textarea>
+          
+          <!-- XP Dialog Buttons -->
+          <div class="flex items-center justify-end gap-2 mt-1">
+            <button onclick="saveNotes()" class="btn-scale xp-btn text-[10px] px-4 py-1.5 cursor-pointer no-drag" style="min-width: 55px;">ОК</button>
+            <button onclick="closeNotesModal(false)" class="btn-scale xp-btn text-[10px] px-3 py-1.5 cursor-pointer no-drag" style="min-width: 55px;">Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Task Modal Overlay (Hidden by default) -->
+    <div id="edit-modal" class="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-3 hidden no-drag">
+      <!-- XP Window (Dialog Box Style) -->
+      <div class="w-full max-w-[260px] bg-[#ECE9D8] rounded-t-[5px] rounded-b-[3px] border-2 border-[#0054E3] flex flex-col shadow-lg">
+        <!-- Modal Header (Blue Title Bar) -->
+        <div class="bg-gradient-to-r from-[#0058E3] via-[#0A65EB] to-[#2787F7] h-[24px] flex items-center justify-between px-2 select-none shrink-0 relative">
+          <div class="absolute top-0 left-0 right-0 h-[1.5px] bg-[#6698FF] opacity-80 pointer-events-none"></div>
+          <span class="text-white font-bold text-[10px] tracking-wide drop-shadow-[1px_1px_0_rgba(0,0,0,0.5)]">Свойства задачи</span>
+          <!-- Mini Close Button -->
+          <button onclick="closeEditModal(false)" class="w-[15px] h-[15px] rounded-[2px] bg-gradient-to-b from-[#E76C55] to-[#C7381F] border border-[#8B2411] flex items-center justify-center text-[9px] text-white font-bold cursor-pointer hover:border-[#FF9999]">✕</button>
+        </div>
+        <!-- Modal Body -->
+        <div class="p-2.5 flex flex-col gap-2">
+          <div class="text-[10px] font-bold text-[#003C74] font-sans">Редактирование формулировки:</div>
+          
+          <!-- Input Field (Sunken 3D border, standard input styling) -->
+          <input 
+            type="text"
+            id="edit-task-input" 
+            maxlength="120"
+            class="w-full text-xs p-1.5 focus:outline-none text-black bg-white rounded-[2px] no-drag select-text font-semibold"
+            style="border: 2px solid #7F9DB9; box-shadow: inset 1.5px 1.5px 2px rgba(0,0,0,0.15);"
+          >
+          
+          <!-- XP Dialog Buttons -->
+          <div class="flex items-center justify-end gap-2 mt-1">
+            <button onclick="saveTaskEdit()" class="btn-scale xp-btn text-[10px] px-4 py-1.5 cursor-pointer no-drag" style="min-width: 55px;">ОК</button>
+            <button onclick="closeEditModal(false)" class="btn-scale xp-btn text-[10px] px-3 py-1.5 cursor-pointer no-drag" style="min-width: 55px;">Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 
@@ -284,13 +351,17 @@
       timeLeft: 1500,
       isRunning: false,
       intervalId: null,
-      endTime: 0
+      endTime: 0,
+      isExpanded: false
     };
 
     // Compact View Mode ViewState
     const viewState = {
       isCompactView: false
     };
+
+    // Notepad Modal global state
+    let currentEditingTaskId = null;
 
     // Load state from localStorage on init
     function loadState() {
@@ -367,8 +438,8 @@
     }
 
     window.toggleCompactView = function() {
-      // Prevent toggling views when Pomodoro is running
-      if (pomodoro.isRunning) return;
+      // Prevent toggling views when Pomodoro is running in collapsed timer mode
+      if (pomodoro.isRunning && !pomodoro.isExpanded) return;
 
       viewState.isCompactView = !viewState.isCompactView;
       try {
@@ -376,6 +447,15 @@
       } catch (e) {
         console.error('Failed to save view settings', e);
       }
+
+      // Auto-close history details when entering compact view
+      if (viewState.isCompactView) {
+        const historyDetails = document.getElementById('history-details');
+        if (historyDetails && historyDetails.open) {
+          historyDetails.open = false;
+        }
+      }
+
       applyCompactView();
     };
 
@@ -437,22 +517,27 @@
       if (pomodoro.isRunning) {
         // Pause Timer
         pomodoro.isRunning = false;
+        pomodoro.isExpanded = false;
         clearInterval(pomodoro.intervalId);
         
         // Return window to normal compact view or normal size
-        document.body.classList.remove('compact-mode');
+        applyTimerExpansion();
         applyCompactView();
       } else {
         // Start Timer
         pomodoro.isRunning = true;
+        pomodoro.isExpanded = false; // Reset to collapsed on start
         // Calculate the exact absolute end timestamp
         pomodoro.endTime = Date.now() + pomodoro.timeLeft * 1000;
         
-        // Shrink window to compact size
-        document.body.classList.add('compact-mode');
-        if (window.windowControls && window.windowControls.setCompact) {
-          window.windowControls.setCompact();
+        // Auto-close history details when entering focus mode
+        const historyDetails = document.getElementById('history-details');
+        if (historyDetails && historyDetails.open) {
+          historyDetails.open = false;
         }
+
+        // Apply expanded or compact timer state
+        applyTimerExpansion();
 
         pomodoro.intervalId = setInterval(() => {
           // Calculate the correct remaining seconds dynamically
@@ -462,12 +547,15 @@
           if (pomodoro.timeLeft <= 0) {
             clearInterval(pomodoro.intervalId);
             pomodoro.isRunning = false;
+            pomodoro.isExpanded = false;
             pomodoro.timeLeft = pomodoro.durationMinutes * 60;
             triggerAlert();
 
             // Return window to compact view or normal size when timer completes
-            document.body.classList.remove('compact-mode');
-            applyCompactView();
+            if (currentEditingTaskId === null) {
+              applyTimerExpansion();
+              applyCompactView();
+            }
           }
           updateTimerUI();
         }, 200); // Poll frequently for smooth updates and precision
@@ -477,14 +565,62 @@
 
     window.resetTimer = function() {
       pomodoro.isRunning = false;
+      pomodoro.isExpanded = false;
       clearInterval(pomodoro.intervalId);
+      
       pomodoro.timeLeft = pomodoro.durationMinutes * 60;
 
       // Return window to compact view or normal size
-      document.body.classList.remove('compact-mode');
+      applyTimerExpansion();
       applyCompactView();
 
       updateTimerUI();
+    };
+
+    window.toggleTimerExpansion = function() {
+      if (!pomodoro.isRunning) return;
+      pomodoro.isExpanded = !pomodoro.isExpanded;
+      applyTimerExpansion();
+    };
+
+    window.applyTimerExpansion = function() {
+      const expandBtn = document.getElementById('timer-expand-btn');
+      const compactBtn = document.getElementById('compact-toggle-btn');
+
+      if (!pomodoro.isRunning) {
+        if (expandBtn) expandBtn.classList.add('hidden');
+        if (compactBtn) compactBtn.classList.remove('hidden');
+        document.body.classList.remove('compact-mode');
+        return;
+      }
+
+      if (expandBtn) expandBtn.classList.remove('hidden');
+      if (compactBtn) compactBtn.classList.add('hidden');
+
+      if (pomodoro.isExpanded) {
+        // Expand the UI
+        document.body.classList.remove('compact-mode');
+        document.body.classList.remove('compact-view');
+        if (expandBtn) {
+          expandBtn.innerHTML = '⤡';
+          expandBtn.title = "Свернуть в таймер";
+        }
+        
+        if (window.windowControls && window.windowControls.setNormal) {
+          window.windowControls.setNormal();
+        }
+      } else {
+        // Collapse the UI
+        document.body.classList.add('compact-mode');
+        document.body.classList.remove('compact-view');
+        if (expandBtn) {
+          expandBtn.innerHTML = '⤢';
+          expandBtn.title = "Развернуть интерфейс";
+        }
+        if (window.windowControls && window.windowControls.setCompact) {
+          window.windowControls.setCompact();
+        }
+      }
     };
 
     function updateTimerUI() {
@@ -536,6 +672,7 @@
       const newTask = {
         id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
         text: trimmed,
+        notes: '',
         createdAt: new Date().toISOString()
       };
 
@@ -603,6 +740,7 @@
           clearInterval(pomodoro.intervalId);
           pomodoro.timeLeft = pomodoro.durationMinutes * 60;
           document.body.classList.remove('compact-mode');
+          applyTimerExpansion();
           applyCompactView();
         }
 
@@ -628,6 +766,7 @@
       // 1. Render Active Task Area
       const activeContainer = document.getElementById('active-task-container');
       if (state.activeTask) {
+        const hasNotes = !!state.activeTask.notes;
         activeContainer.innerHTML = `
           <!-- Windows XP Group Box with thin etched borders -->
           <div class="border border-[#7F9DB9] bg-white rounded-[3px] p-3 text-center transition-all duration-300 cursor-move" style="box-shadow: inset 1px 1px 0 #ffffff;">
@@ -636,20 +775,47 @@
               ${escapeHTML(state.activeTask.text)}
             </p>
             
+            ${hasNotes ? `
+              <!-- Yellow Sticky Note for Task Notes (XP Style Tooltip / Sticky Note) -->
+              <div class="mt-2 p-1.5 bg-[#FFFFE1] border border-[#E1DFB8] rounded-[2px] text-left text-[10px] text-stone-700 max-h-[50px] overflow-y-auto cozy-scrollbar relative select-text hidden-in-compact no-drag" title="Заметки">
+                <div class="absolute top-0.5 right-1.5 text-[8px] font-bold text-[#A4A37A] select-none uppercase tracking-wider">Заметка</div>
+                <p class="whitespace-pre-wrap pr-5 font-mono leading-tight">${escapeHTML(state.activeTask.notes)}</p>
+              </div>
+            ` : ''}
+            
             <div class="flex items-center justify-between w-full mt-3 px-0.5 select-none no-drag">
-              <!-- XP-Style 3D Gray Button -->
-              <button 
-                onclick="completeTask('${state.activeTask.id}')"
-                class="btn-scale xp-btn text-[9px] px-3.5 py-1 transition-all cursor-pointer no-drag animate-none"
-              >
-                Готово
-              </button>
+              <div class="flex items-center gap-1.5">
+                <!-- XP-Style 3D Gray Button -->
+                <button 
+                  onclick="completeTask('${state.activeTask.id}')"
+                  class="btn-scale xp-btn text-[10px] px-2.5 h-[21px] flex items-center justify-center cursor-pointer no-drag animate-none font-bold"
+                  title="Завершить задачу"
+                >
+                  Готово
+                </button>
+                <!-- XP-Style 3D Gray Note Button -->
+                <button 
+                  onclick="openNotesModal('${state.activeTask.id}')"
+                  class="btn-scale xp-btn w-[21px] h-[21px] flex items-center justify-center cursor-pointer no-drag animate-none text-[10px]"
+                  title="Открыть блокнот"
+                >
+                  📝
+                </button>
+                <!-- XP-Style 3D Gray Edit Button -->
+                <button 
+                  onclick="openEditModal('${state.activeTask.id}')"
+                  class="btn-scale xp-btn w-[21px] h-[21px] flex items-center justify-center cursor-pointer no-drag animate-none text-[10px]"
+                  title="Редактировать задачу"
+                >
+                  ✏️
+                </button>
+              </div>
               
               <!-- Pomodoro Timer Pill (XP Console Style) -->
-              <div class="flex items-center gap-1.5 text-[10px] bg-black border border-[#7F9DB9]/60 rounded-[3px] px-2 py-0.5 shadow-inner no-drag">
-                <button onclick="toggleTimer()" class="timer-play-btn text-[#00FF00] hover:text-[#76ff9a] transition-colors cursor-pointer text-[7px] animate-none font-bold" title="Старт/Пауза">▶</button>
-                <span class="timer-display font-mono text-[#00FF00] font-bold select-all tracking-wider">25:00</span>
-                <button onclick="resetTimer()" class="hover:text-white transition-colors cursor-pointer text-[9px] text-[#A62F1B] animate-none" title="Сбросить">↺</button>
+              <div class="flex items-center gap-1 text-[10px] bg-black border border-[#7F9DB9]/60 rounded-[3px] px-1.5 py-0.5 shadow-inner no-drag h-[21px]">
+                <button onclick="toggleTimer()" class="timer-play-btn text-[#00FF00] hover:text-[#76ff9a] transition-colors cursor-pointer text-[7px] animate-none font-bold select-none" title="Старт/Пауза">▶</button>
+                <span class="timer-display font-mono text-[#00FF00] font-bold select-all tracking-wider text-[10px]">25:00</span>
+                <button onclick="resetTimer()" class="hover:text-white transition-colors cursor-pointer text-[9px] text-[#A62F1B] animate-none select-none" title="Сбросить">↺</button>
               </div>
             </div>
           </div>
@@ -682,24 +848,45 @@
           </div>
         `;
       } else {
-        parallelContainer.innerHTML = state.parallelTasks.map(t => `
-          <div class="group flex items-center justify-between py-1 px-1.5 hover:bg-[#3D7BF5]/15 border-b border-[#D2D2C9]/30 transition-colors duration-100">
-            <button 
-              onclick="switchTask('${t.id}')"
-              class="flex-1 text-left text-xs font-semibold text-stone-800 hover:text-[#003C74] truncate pr-2 cursor-pointer transition-colors duration-100 animate-none"
-              title="Переключить фокус"
-            >
-              <span class="text-[#0054E3] mr-1 select-none font-bold">•</span> ${escapeHTML(t.text)}
-            </button>
-            <button 
-              onclick="completeTask('${t.id}')"
-              class="opacity-0 group-hover:opacity-100 text-[#0054E3] hover:text-green-600 transition-opacity duration-100 cursor-pointer text-[10px] px-0.5 font-bold animate-none"
-              title="Завершить сразу"
-            >
-              ✓
-            </button>
-          </div>
-        `).join('');
+        parallelContainer.innerHTML = state.parallelTasks.map(t => {
+          const hasNotes = !!t.notes;
+          return `
+            <div class="group flex items-center justify-between py-1 px-1.5 hover:bg-[#3D7BF5]/15 border-b border-[#D2D2C9]/30 transition-colors duration-100">
+              <button 
+                onclick="switchTask('${t.id}')"
+                class="flex-1 text-left text-xs font-semibold text-stone-800 hover:text-[#003C74] truncate pr-2 cursor-pointer transition-colors duration-100 animate-none flex items-center"
+                title="Переключить фокус"
+              >
+                <span class="text-[#0054E3] mr-1 select-none font-bold shrink-0">•</span> 
+                <span class="truncate">${escapeHTML(t.text)}</span>
+                ${hasNotes ? `<span class="text-[8px] text-[#A4A37A] bg-[#FFFFE1] border border-[#E1DFB8]/60 px-0.5 rounded-[1px] ml-1 select-none shrink-0" title="${escapeHTML(t.notes)}">📝</span>` : ''}
+              </button>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button 
+                  onclick="openEditModal('${t.id}')"
+                  class="opacity-0 group-hover:opacity-100 text-[#0054E3] hover:text-blue-800 transition-opacity duration-100 cursor-pointer text-[10px] px-0.5 font-bold animate-none"
+                  title="Редактировать задачу"
+                >
+                  ✏️
+                </button>
+                <button 
+                  onclick="openNotesModal('${t.id}')"
+                  class="${hasNotes ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} text-[#0054E3] hover:text-blue-800 transition-opacity duration-100 cursor-pointer text-[10px] px-0.5 font-bold animate-none"
+                  title="Редактировать заметку"
+                >
+                  📝
+                </button>
+                <button 
+                  onclick="completeTask('${t.id}')"
+                  class="opacity-0 group-hover:opacity-100 text-[#0054E3] hover:text-green-600 transition-opacity duration-100 cursor-pointer text-[10px] px-0.5 font-bold animate-none"
+                  title="Завершить сразу"
+                >
+                  ✓
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
       }
 
       // 3. Render History / Archive List
@@ -712,17 +899,185 @@
           <p class="text-[9px] text-[#003C74] italic text-center py-2 select-none">Архив пока пуст</p>
         `;
       } else {
-        historyList.innerHTML = state.history.map(t => `
-          <div class="flex items-center justify-between py-0.5 px-0.5 text-[10px] text-[#003C74] select-text">
-            <span class="line-through truncate max-w-[210px] text-stone-500">• ${escapeHTML(t.text)}</span>
-            <span class="text-[8px] text-stone-500 select-none shrink-0 font-medium">${formatTime(t.completedAt)}</span>
-          </div>
-        `).join('');
+        historyList.innerHTML = state.history.map(t => {
+          const hasNotes = !!t.notes;
+          return `
+            <div class="flex items-center justify-between py-0.5 px-0.5 text-[10px] text-[#003C74] select-text">
+              <span class="line-through truncate max-w-[210px] text-stone-500" title="${hasNotes ? 'Заметка: ' + escapeHTML(t.notes) : ''}">
+                • ${escapeHTML(t.text)}
+                ${hasNotes ? `<span class="text-[8px] text-[#A4A37A] bg-[#FFFFE1] border border-[#E1DFB8]/60 px-0.5 rounded-[1px] ml-0.5 select-none">📝</span>` : ''}
+              </span>
+              <span class="text-[8px] text-stone-500 select-none shrink-0 font-medium">${formatTime(t.completedAt)}</span>
+            </div>
+          `;
+        }).join('');
       }
 
       // Update timer elements display instantly
       updateTimerUI();
     }
+
+    // --- Notepad Modal Logic ---
+
+    window.openNotesModal = function(taskId) {
+      // Temporarily expand physical window and remove compact classes so the modal fits perfectly
+      if (window.windowControls && window.windowControls.setNormal) {
+        window.windowControls.setNormal();
+      }
+      document.body.classList.remove('compact-mode', 'compact-view');
+
+      currentEditingTaskId = taskId;
+      let task = null;
+      if (state.activeTask && state.activeTask.id === taskId) {
+        task = state.activeTask;
+      } else {
+        task = state.parallelTasks.find(t => t.id === taskId);
+      }
+      
+      if (!task) return;
+      
+      const titleEl = document.getElementById('notes-modal-task-title');
+      if (titleEl) {
+        const dispText = task.text.length > 30 ? task.text.substring(0, 30) + '...' : task.text;
+        titleEl.textContent = 'Задача: ' + dispText;
+      }
+      
+      const textarea = document.getElementById('notes-textarea');
+      if (textarea) {
+        textarea.value = task.notes || '';
+      }
+      
+      const modal = document.getElementById('notes-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
+      
+      // Focus textarea with a slightly longer timeout to allow Electron window to resize
+      setTimeout(() => {
+        if (textarea) textarea.focus();
+      }, 100);
+    };
+
+    window.closeNotesModal = function(save) {
+      if (save && currentEditingTaskId) {
+        const textarea = document.getElementById('notes-textarea');
+        const notesValue = textarea ? textarea.value : '';
+        
+        if (state.activeTask && state.activeTask.id === currentEditingTaskId) {
+          state.activeTask.notes = notesValue;
+        } else {
+          const t = state.parallelTasks.find(t => t.id === currentEditingTaskId);
+          if (t) {
+            t.notes = notesValue;
+          }
+        }
+        saveState();
+        render();
+      }
+      
+      const modal = document.getElementById('notes-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+      currentEditingTaskId = null;
+
+      // Restore original view mode and resize physical window
+      if (pomodoro.isRunning) {
+        applyTimerExpansion();
+      } else if (viewState.isCompactView) {
+        document.body.classList.add('compact-view');
+        if (window.windowControls && window.windowControls.setCompactView) {
+          window.windowControls.setCompactView();
+        }
+      } else {
+        if (window.windowControls && window.windowControls.setNormal) {
+          window.windowControls.setNormal();
+        }
+      }
+    };
+
+    window.saveNotes = function() {
+      closeNotesModal(true);
+    };
+
+    // --- Edit Task Modal Logic ---
+    let currentEditingTaskForTextId = null;
+
+    window.openEditModal = function(taskId) {
+      // Temporarily expand physical window and remove compact classes so the modal fits perfectly
+      if (window.windowControls && window.windowControls.setNormal) {
+        window.windowControls.setNormal();
+      }
+      document.body.classList.remove('compact-mode', 'compact-view');
+
+      currentEditingTaskForTextId = taskId;
+      let task = null;
+      if (state.activeTask && state.activeTask.id === taskId) {
+        task = state.activeTask;
+      } else {
+        task = state.parallelTasks.find(t => t.id === taskId);
+      }
+      
+      if (!task) return;
+      
+      const inputEl = document.getElementById('edit-task-input');
+      if (inputEl) {
+        inputEl.value = task.text || '';
+      }
+      
+      const modal = document.getElementById('edit-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
+      
+      setTimeout(() => {
+        if (inputEl) inputEl.focus();
+      }, 100);
+    };
+
+    window.closeEditModal = function(save) {
+      if (save && currentEditingTaskForTextId) {
+        const inputEl = document.getElementById('edit-task-input');
+        const textValue = inputEl ? inputEl.value.trim() : '';
+        
+        if (textValue) {
+          if (state.activeTask && state.activeTask.id === currentEditingTaskForTextId) {
+            state.activeTask.text = textValue;
+          } else {
+            const t = state.parallelTasks.find(t => t.id === currentEditingTaskForTextId);
+            if (t) {
+              t.text = textValue;
+            }
+          }
+          saveState();
+          render();
+        }
+      }
+      
+      const modal = document.getElementById('edit-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+      currentEditingTaskForTextId = null;
+
+      // Restore original view mode and resize physical window
+      if (pomodoro.isRunning) {
+        applyTimerExpansion();
+      } else if (viewState.isCompactView) {
+        document.body.classList.add('compact-view');
+        if (window.windowControls && window.windowControls.setCompactView) {
+          window.windowControls.setCompactView();
+        }
+      } else {
+        if (window.windowControls && window.windowControls.setNormal) {
+          window.windowControls.setNormal();
+        }
+      }
+    };
+
+    window.saveTaskEdit = function() {
+      closeEditModal(true);
+    };
 
     // App Initialization
     document.addEventListener('DOMContentLoaded', () => {
@@ -746,6 +1101,22 @@
       const durationInput = document.getElementById('timer-duration-input');
       if (durationInput) {
         durationInput.value = pomodoro.durationMinutes;
+      }
+
+      // Listen for Options & Archive details panel toggle to resize window
+      const historyDetails = document.getElementById('history-details');
+      if (historyDetails) {
+        historyDetails.addEventListener('toggle', () => {
+          if (historyDetails.open) {
+            if (window.windowControls && window.windowControls.setExpanded) {
+              window.windowControls.setExpanded();
+            }
+          } else {
+            if (window.windowControls && window.windowControls.setNormal) {
+              window.windowControls.setNormal();
+            }
+          }
+        });
       }
     });
   </script>

@@ -1,14 +1,21 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
+let mainWindow;
+
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 310,
     height: 450,
+    minWidth: 310,
+    maxWidth: 310,
+    minHeight: 450,
+    maxHeight: 450,
     frame: false,
     transparent: true,
+    hasShadow: false,
     alwaysOnTop: true,
-    resizable: false,
+    resizable: true,
     maximizable: false,
     fullscreenable: false,
     skipTaskbar: false,
@@ -29,7 +36,7 @@ function createWindow() {
 
   // Prevent flash on startup
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    if (mainWindow) mainWindow.show();
   });
 }
 
@@ -54,27 +61,34 @@ ipcMain.on('window-close', () => {
 });
 
 ipcMain.on('window-minimize', () => {
-  const win = BrowserWindow.getFocusedWindow();
-  if (win) win.minimize();
+  if (mainWindow) {
+    mainWindow.minimize();
+  }
 });
 
-ipcMain.on('window-resize-compact', () => {
-  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-  if (win) {
-    win.setSize(310, 150);
+function resizeWindow(width, height) {
+  if (mainWindow) {
+    mainWindow.setMinimumSize(width, height);
+    mainWindow.setMaximumSize(width, height);
+    mainWindow.setSize(width, height);
   }
+}
+
+ipcMain.on('window-resize-compact', () => {
+  resizeWindow(310, 175);
 });
 
 ipcMain.on('window-resize-compact-view', () => {
-  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-  if (win) {
-    win.setSize(310, 280);
-  }
+  resizeWindow(310, 290);
 });
 
 ipcMain.on('window-resize-normal', () => {
-  const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-  if (win) {
-    win.setSize(310, 450);
-  }
+  resizeWindow(310, 450);
 });
+
+ipcMain.on('window-resize-expanded', () => {
+  resizeWindow(310, 580);
+});
+
+
+
